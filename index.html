@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consórcio MEX Energia</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0e1a;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Header Fixo */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: linear-gradient(135deg, #1a1f2e 0%, #2d3748 100%);
+            border-bottom: 2px solid #4299e1;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            padding: 0 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(66, 153, 225, 0.2);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: #4299e1;
+            margin-right: 40px;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            align-items: center;
+        }
+
+        .location-selector {
+            display: flex;
+            gap: 10px;
+            margin: 0 20px;
+        }
+
+        .location-select {
+            background: rgba(45, 55, 72, 0.8);
+            border: 1px solid #4a5568;
+            color: #ffffff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            min-width: 140px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .location-select:hover {
+            border-color: #4299e1;
+            background: rgba(66, 153, 225, 0.1);
+        }
+
+        .location-select:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
+        }
+
+        .location-select option {
+            background: #2d3748;
+            color: #ffffff;
+            padding: 8px;
+        }
+
+        .location-select option:disabled {
+            color: #718096;
+            background: #1a202c;
+        }
+
+        .location-select option.active {
+            background: #4299e1;
+            font-weight: bold;
+        }
+
+        .nav-item {
+            position: relative; /* Contexto para o submenu */
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        /* Efeito de "camada envolvente": mantém o item pai destacado no hover */
+        .nav-item:hover, .nav-item.active {
+            background: rgba(66, 153, 225, 0.2);
+            color: #4299e1;
+        }
+
+        /* Estilos do Submenu */
+        .submenu {
+            display: none; /* Escondido por padrão */
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 10px;
+            background: linear-gradient(135deg, #1a1f2e 0%, #2d3748 100%);
+            border: 1px solid #4a5568;
+            border-radius: 8px;
+            padding: 10px;
+            min-width: 280px;
+            z-index: 1002;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(5px);
+        }
+
+        /* Mostra o submenu ao passar o mouse sobre o .nav-item */
+        .nav-item:hover > .submenu {
+            display: block;
+        }
+
+        .submenu a {
+            display: block;
+            color: #cbd5e0;
+            padding: 10px 15px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.2s ease-in-out;
+            white-space: nowrap;
+        }
+
+        .submenu a:hover {
+            background: rgba(66, 153, 225, 0.2);
+            color: #4299e1;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 4px 8px;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            font-size: 14px;
+            color: #4299e1;
+        }
+
+        .stat-label {
+            opacity: 0.7;
+            font-size: 10px;
+        }
+
+        /* Sidebar Fixa */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 80px;
+            width: 280px;
+            height: calc(100vh - 80px);
+            background: linear-gradient(180deg, #1a202c 0%, #2d3748 100%);
+            border-right: 1px solid #4a5568;
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 900;
+        }
+
+        .filter-section {
+            margin-bottom: 30px;
+        }
+
+        .filter-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #cbd5e0;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-grid {
+            display: grid;
+            gap: 8px;
+        }
+
+        .filter-btn {
+            background: rgba(74, 85, 104, 0.3);
+            border: 1px solid rgba(74, 85, 104, 0.5);
+            color: #cbd5e0;
+            padding: 10px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 13px;
+            font-weight: 500;
+            text-align: left;
+        }
+
+        .filter-btn:hover {
+            background: rgba(66, 153, 225, 0.2);
+            border-color: #4299e1;
+            color: #4299e1;
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            border-color: #4299e1;
+            color: white;
+            box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            margin-top: 80px;
+            padding: 20px;
+            min-height: calc(100vh - 80px);
+        }
+
+        /* Estilos do Dashboard View e Iframe */
+        #dashboard-view {
+            display: block; /* Visível por padrão */
+        }
+
+        #content-iframe {
+            display: none; /* Oculto por padrão */
+            width: 100%;
+            height: calc(100vh - 80px - 40px); /* (Altura da tela) - (header) - (padding) */
+            border: none;
+            border-radius: 12px;
+            background-color: #1a202c; /* Fundo para combinar com o tema */
+        }
+
+        .content-header {
+            margin-bottom: 20px;
+        }
+
+        .content-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .content-subtitle {
+            font-size: 14px;
+            color: #a0aec0;
+            margin-bottom: 20px;
+        }
+
+        .metrics-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+            border: 1px solid #4a5568;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(66, 153, 225, 0.2);
+            border-color: #4299e1;
+        }
+
+        .metric-icon {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #4299e1;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #a0aec0;
+            margin-bottom: 5px;
+        }
+
+        .metric-progress {
+            width: 100%;
+            height: 4px;
+            background: rgba(74, 85, 104, 0.3);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .metric-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4299e1, #3182ce);
+            transition: width 0.3s ease;
+        }
+
+        /* Treemap Container */
+        .treemap-container {
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+            border: 1px solid #4a5568;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            min-height: 600px;
+        }
+
+        .treemap-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #4a5568;
+        }
+
+        .treemap-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .view-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .view-btn {
+            padding: 6px 12px;
+            background: rgba(74, 85, 104, 0.3);
+            border: 1px solid rgba(74, 85, 104, 0.5);
+            color: #cbd5e0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 12px;
+        }
+
+        .view-btn.active {
+            background: #4299e1;
+            border-color: #4299e1;
+            color: white;
+        }
+
+        /* Treemap Styles */
+        .treemap-rect {
+            stroke: #2d3748;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .treemap-rect:hover {
+            stroke: #4299e1;
+            stroke-width: 3;
+            filter: brightness(1.2);
+        }
+
+        .treemap-text {
+            pointer-events: none;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-weight: 600;
+            fill: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .treemap-value {
+            pointer-events: none;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-weight: 700;
+            fill: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: rgba(26, 32, 44, 0.95);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+            pointer-events: none;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            border: 1px solid #4a5568;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            max-width: 280px;
+        }
+
+        /* Legend */
+        .legend {
+            background: rgba(45, 55, 72, 0.5);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .legend-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #cbd5e0;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            color: #a0aec0;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 8px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .header {
+                padding: 0 15px;
+            }
+
+            .nav-menu {
+                display: none;
+            }
+
+            .location-selector {
+                display: none;
+            }
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 400px;
+            font-size: 16px;
+            color: #a0aec0;
+        }
+
+        .loading::after {
+            content: '';
+            width: 20px;
+            height: 20px;
+            border: 2px solid #4a5568;
+            border-top-color: #4299e1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Fixo -->
+<header class="header">
+    <div class="logo">MEX Energia</div>
+    <nav class="nav-menu">
+        <div class="nav-item active">Dashboard</div>
+
+        <div class="nav-item">Dor/Oportunidade
+            <div class="submenu">
+                <a href="https://tech.facebook.com/engineering/2021/11/open-compute-project/" target="_blank">
+                    Mágica 1: Facebook destrói PUE
+                </a>
+                <a href="https://www.facebook.com/PrinevilleDataCenter/videos/10150385588936731/" target="_blank">
+                    Mágica 1.1: Vídeo Prineville DC
+                </a>
+                <a href="https://www.ashrae.org/file%20library/technical%20resources/bookstore/ashrae_tc0909_power_white_paper_22_june_2016_revised.pdf" target="_blank">
+                    Mágica 2: ASHRAE eleva teto 27°C
+                </a>
+                <a href="https://www.vertiv.com/499702/globalassets/products/thermal-management/in-row-cooling/vertiv_ap__elevated_return_air_temperature__-_en_-_asia_302442_0.pdf" target="_blank">
+                    Mágica 3: Indústria se adequa
+                </a>
+                <a href="https://static.googleusercontent.com/media/www.google.com/pt-BR//about/datacenters/efficiency/internal/assets/machine-learning-applicationsfor-datacenter-optimization-finalv2.pdf" target="_blank">
+                    Mágica 4: DeepMind reduz PUE 40%
+                </a>
+                <a href="https://deepmind.google/discover/blog/deepmind-ai-reduces-google-data-centre-cooling-bill-by-40/" target="_blank">
+                    Mágica 4.0: Blog DeepMind
+                </a>
+                <a href="https://github.com/LaurentVeyssier/Minimize-Energy-consumption-with-Deep-Learning-model" target="_blank">
+                    Mágica 4.1: GitHub Minimizar Consumo
+                </a>
+                <a href="https://status.cloud.google.com/incidents/fmEL9i2fArADKawkZAa2/" target="_blank">
+                    Resiliência Climática (Google Cloud)
+                </a>
+            </div>
+        </div>
+
+        <div class="nav-item">ESC
+            <div class="submenu">
+                <a href="https://wawpuibt.manus.space/" target="_blank">
+                    Plataforma ESC
+                </a>
+            </div>
+        </div>
+
+        <div class="nav-item">Legis
+            <div class="submenu">
+                <a href="https://www25.senado.leg.br/web/atividade/materias/-/materia/164831" target="_blank">
+                    REDATA
+                </a>
+                <a href="https://agenciabrasil.ebc.com.br/economia/noticia/2025-05/haddad-anuncia-que-pretende-acelerar-desoneracao-de-data-centers" target="_blank">
+                    REDATA_25/30_2T
+                </a>
+                <a href="https://claude.ai/public/artifacts/3cf19164-d0d5-44b2-aabd-368332dde7dd" target="_blank">
+                    REDATA KIDS
+                </a>
+
+                </a>
+                <a href="https://3000-ipt3dcolgqg609yx8xz8f-e7a55fad.manusvm.computer/" target="_blank">
+                    MEX DAO
+                </a>
+
+                  <a href="https://3000-ipt3dcolgqg609yx8xz8f-e7a55fad.manusvm.computer/" target="_blank">
+                    Energia Social
+                </a>
+
+                </a>
+                <a href="https://claude.ai/public/artifacts/0c2f1ebb-d2dd-45e3-9063-e7c336838af7" target="_blank">
+                    MEX Inteligência
+                </a>
+
+                 <a href="https://claude.ai/public/artifacts/90e80487-051f-4365-bf91-8b2ee017155b" target="_blank">
+                    100% Mauá
+                </a>
+
+                  <a href="https://yemdxbhh.manus.space/" target="_blank">
+                    WorkShop 100% Mauá
+                </a>
+
+
+            </div>
+        </div>
+
+        <div class="location-selector">
+            <select id="countrySelect" class="location-select">
+                <option value="brazil">🇧🇷 Brasil</option>
+                <option value="usa" disabled>🇺🇸 EUA (Em breve)</option>
+                <option value="canada" disabled>🇨🇦 Canadá (Em breve)</option>
+                <option value="mexico" disabled>🇲🇽 México (Em breve)</option>
+            </select>
+            <select id="citySelect" class="location-select">
+                <option value="">Selecione uma cidade...</option>
+            </select>
+        </div>
+    </nav>
+</header>
+
+
+    <!-- Sidebar Fixa -->
+    <aside class="sidebar">
+        <div class="filter-section">
+            <div class="filter-title">📊 Categorias</div>
+            <div class="filter-grid">
+                <button class="filter-btn active" data-filter="all">🎯 Todos os Indicadores</button>
+                <button class="filter-btn" data-filter="energy">⚡ Energia & Emissões</button>
+                <button class="filter-btn" data-filter="social">👥 Indicadores Sociais</button>
+                <button class="filter-btn" data-filter="environment">🌱 Meio Ambiente</button>
+                <button class="filter-btn" data-filter="economy">💰 Economia Verde</button>
+                <button class="filter-btn" data-filter="worldbank">🏦 World Bank</button>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-title">🎨 Visualização</div>
+            <div class="filter-grid">
+                <button class="view-btn active" data-view="meta">% da Meta Atingida</button>
+                <button class="view-btn" data-view="gap">Gap vs Helsinki</button>
+                <button class="view-btn" data-view="performance">Performance Atual</button>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-title">Legenda de Cores</div>
+            <div class="legend-grid">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #22c55e;"></div>
+                    <span>Meta Atingida (80%+)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #3b82f6;"></div>
+                    <span>Próximo (60-80%)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f59e0b;"></div>
+                    <span>Moderado (40-60%)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ef4444;"></div>
+                    <span>Crítico (<40%)</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Wrapper para o Dashboard -->
+        <div id="dashboard-view">
+            <div class="content-header">
+                <h1 class="content-title">Dashboard de Sustentabilidade</h1>
+                <p class="content-subtitle">Monitoramento em tempo real dos indicadores de sustentabilidade de Mauá baseado no Global Destination Sustainability Index</p>
+            </div>
+
+            <div class="metrics-overview">
+                <div class="metric-card">
+                    <div class="metric-icon">⚡</div>
+                    <div class="metric-value">53.2%</div>
+                    <div class="metric-label">Energia Renovável</div>
+                    <div class="metric-progress">
+                        <div class="metric-progress-bar" style="width: 53.2%"></div>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon">🌱</div>
+                    <div class="metric-value">62.0%</div>
+                    <div class="metric-label">Gestão Ambiental</div>
+                    <div class="metric-progress">
+                        <div class="metric-progress-bar" style="width: 62.0%"></div>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon">👥</div>
+                    <div class="metric-value">71.5%</div>
+                    <div class="metric-label">Indicadores Sociais</div>
+                    <div class="metric-progress">
+                        <div class="metric-progress-bar" style="width: 71.5%"></div>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon">💰</div>
+                    <div class="metric-value">48.7%</div>
+                    <div class="metric-label">Economia Verde</div>
+                    <div class="metric-progress">
+                        <div class="metric-progress-bar" style="width: 48.7%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="treemap-container">
+                <div class="treemap-header">
+                    <div class="treemap-title">Treemap de Indicadores - Percentual da Meta Atingida</div>
+                </div>
+                <div id="treemap" class="loading">Carregando dados...</div>
+            </div>
+        </div>
+
+        <!-- Iframe para conteúdo externo -->
+        <iframe id="content-iframe" title="Conteúdo Externo"></iframe>
+    </main>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // Dados completos dos indicadores com metas específicas
+        const mauaData = [
+            // World Bank Indicators
+            { name: "PIB per capita", category: "worldbank", current: 9258, target: 54000, unit: "USD", trend: "up", priority: "high" },
+            { name: "Consumo Energia", category: "worldbank", current: 2360, target: 4500, unit: "kWh", trend: "stable", priority: "medium" },
+
+            // Energy & Emissions
+            { name: "Energia Renovável", category: "energy", current: 45.2, target: 85, unit: "%", trend: "up", priority: "high" },
+            { name: "Eficiência Energética", category: "energy", current: 62.8, target: 90, unit: "%", trend: "up", priority: "high" },
+            { name: "Redução CO2", category: "energy", current: 38.4, target: 80, unit: "%", trend: "up", priority: "critical" },
+            { name: "Transporte Limpo", category: "energy", current: 34.6, target: 75, unit: "%", trend: "up", priority: "high" },
+            { name: "Eletricidade Verde", category: "energy", current: 78.9, target: 95, unit: "%", trend: "up", priority: "medium" },
+            { name: "Smart Grid", category: "energy", current: 25.3, target: 60, unit: "%", trend: "up", priority: "medium" },
+
+            // Social Indicators
+            { name: "Qualidade do Ar", category: "social", current: 56.7, target: 90, unit: "IQA", trend: "up", priority: "critical" },
+            { name: "Acesso à Água", category: "social", current: 89.3, target: 100, unit: "%", trend: "stable", priority: "high" },
+            { name: "Saneamento", category: "social", current: 67.5, target: 100, unit: "%", trend: "up", priority: "high" },
+            { name: "Educação Ambiental", category: "social", current: 71.2, target: 90, unit: "%", trend: "up", priority: "medium" },
+            { name: "Saúde Pública", category: "social", current: 73.8, target: 95, unit: "%", trend: "stable", priority: "high" },
+            { name: "Participação Cidadã", category: "social", current: 52.4, target: 80, unit: "%", trend: "up", priority: "medium" },
+            { name: "Inclusão Digital", category: "social", current: 64.7, target: 85, unit: "%", trend: "up", priority: "medium" },
+
+            // Environment
+            { name: "Gestão de Resíduos", category: "environment", current: 58.9, target: 95, unit: "%", trend: "up", priority: "high" },
+            { name: "Biodiversidade", category: "environment", current: 41.7, target: 80, unit: "índice", trend: "down", priority: "critical" },
+            { name: "Cobertura Verde", category: "environment", current: 35.6, target: 60, unit: "%", trend: "up", priority: "high" },
+            { name: "Qualidade da Água", category: "environment", current: 64.3, target: 90, unit: "IQA", trend: "stable", priority: "high" },
+            { name: "Controle Poluição", category: "environment", current: 48.2, target: 85, unit: "%", trend: "up", priority: "high" },
+            { name: "Economia Circular", category: "environment", current: 32.1, target: 70, unit: "%", trend: "up", priority: "medium" },
+
+            // Green Economy
+            { name: "Investimento Verde", category: "economy", current: 29.7, target: 60, unit: "%", trend: "up", priority: "high" },
+            { name: "Empregos Verdes", category: "economy", current: 15.4, target: 35, unit: "%", trend: "up", priority: "medium" },
+            { name: "Inovação Sustentável", category: "economy", current: 51.6, target: 80, unit: "índice", trend: "up", priority: "high" },
+            { name: "Startups Verdes", category: "economy", current: 23.8, target: 50, unit: "%", trend: "up", priority: "medium" },
+            { name: "Financiamento ESG", category: "economy", current: 18.5, target: 40, unit: "%", trend: "up", priority: "medium" }
+        ];
+
+        // Base de dados dos municípios brasileiros
+        const brazilianCities = [
+            // São Paulo - Região Metropolitana
+            { name: "Mauá", state: "SP", region: "Grande São Paulo", active: true, population: 477781 },
+            { name: "São Paulo", state: "SP", region: "Grande São Paulo", active: false, population: 12396372 },
+            { name: "Santo André", state: "SP", region: "Grande São Paulo", active: false, population: 721368 },
+            { name: "São Bernardo do Campo", state: "SP", region: "Grande São Paulo", active: false, population: 844483 },
+            { name: "Diadema", state: "SP", region: "Grande São Paulo", active: false, population: 426757 },
+            { name: "Ribeirão Pires", state: "SP", region: "Grande São Paulo", active: false, population: 124699 },
+            { name: "Rio Grande da Serra", state: "SP", region: "Grande São Paulo", active: false, population: 50101 },
+
+            // São Paulo - Interior
+            { name: "Campinas", state: "SP", region: "Interior SP", active: false, population: 1223237 },
+            { name: "São José dos Campos", state: "SP", region: "Vale do Paraíba", active: false, population: 729737 },
+            { name: "Ribeirão Preto", state: "SP", region: "Interior SP", active: false, population: 711825 },
+            { name: "Sorocaba", state: "SP", region: "Interior SP", active: false, population: 695328 },
+            { name: "Santos", state: "SP", region: "Baixada Santista", active: false, population: 433656 },
+
+            // Rio de Janeiro
+            { name: "Rio de Janeiro", state: "RJ", region: "Região Metropolitana RJ", active: false, population: 6775561 },
+            { name: "Niterói", state: "RJ", region: "Região Metropolitana RJ", active: false, population: 515317 },
+            { name: "Duque de Caxias", state: "RJ", region: "Baixada Fluminense", active: false, population: 924624 },
+            { name: "Nova Iguaçu", state: "RJ", region: "Baixada Fluminense", active: false, population: 823302 },
+
+            // Minas Gerais
+            { name: "Belo Horizonte", state: "MG", region: "Região Metropolitana BH", active: false, population: 2530701 },
+            { name: "Contagem", state: "MG", region: "Região Metropolitana BH", active: false, population: 668949 },
+            { name: "Uberlândia", state: "MG", region: "Triângulo Mineiro", active: false, population: 699097 },
+            { name: "Juiz de Fora", state: "MG", region: "Zona da Mata", active: false, population: 573285 },
+
+            // Bahia
+            { name: "Salvador", state: "BA", region: "Região Metropolitana Salvador", active: false, population: 2900319 },
+            { name: "Feira de Santana", state: "BA", region: "Interior BA", active: false, population: 619609 },
+            { name: "Vitória da Conquista", state: "BA", region: "Interior BA", active: false, population: 341597 },
+
+            // Paraná
+            { name: "Curitiba", state: "PR", region: "Região Metropolitana Curitiba", active: false, population: 1963726 },
+            { name: "Londrina", state: "PR", region: "Norte PR", active: false, population: 575377 },
+            { name: "Maringá", state: "PR", region: "Norte PR", active: false, population: 436472 },
+
+            // Rio Grande do Sul
+            { name: "Porto Alegre", state: "RS", region: "Região Metropolitana POA", active: false, population: 1492530 },
+            { name: "Caxias do Sul", state: "RS", region: "Serra Gaúcha", active: false, population: 517451 },
+            { name: "Pelotas", state: "RS", region: "Sul RS", active: false, population: 343826 },
+
+            // Santa Catarina
+            { name: "Florianópolis", state: "SC", region: "Grande Florianópolis", active: false, population: 508826 },
+            { name: "Joinville", state: "SC", region: "Norte SC", active: false, population: 597658 },
+            { name: "Blumenau", state: "SC", region: "Vale do Itajaí", active: false, population: 361855 },
+
+            // Goiás
+            { name: "Goiânia", state: "GO", region: "Região Metropolitana Goiânia", active: false, population: 1555626 },
+            { name: "Aparecida de Goiânia", state: "GO", region: "Região Metropolitana Goiânia", active: false, population: 578179 },
+
+            // Espírito Santo
+            { name: "Vitória", state: "ES", region: "Grande Vitória", active: false, population: 365855 },
+            { name: "Vila Velha", state: "ES", region: "Grande Vitória", active: false, population: 501325 },
+            { name: "Cariacica", state: "ES", region: "Grande Vitória", active: false, population: 383917 },
+
+            // Pernambuco
+            { name: "Recife", state: "PE", region: "Região Metropolitana Recife", active: false, population: 1661017 },
+            { name: "Jaboatão dos Guararapes", state: "PE", region: "Região Metropolitana Recife", active: false, population: 706867 },
+            { name: "Olinda", state: "PE", region: "Região Metropolitana Recife", active: false, population: 393115 },
+
+            // Ceará
+            { name: "Fortaleza", state: "CE", region: "Região Metropolitana Fortaleza", active: false, population: 2703391 },
+            { name: "Caucaia", state: "CE", region: "Região Metropolitana Fortaleza", active: false, population: 368918 },
+
+            // Pará
+            { name: "Belém", state: "PA", region: "Região Metropolitana Belém", active: false, population: 1506420 },
+            { name: "Ananindeua", state: "PA", region: "Região Metropolitana Belém", active: false, population: 535547 },
+
+            // Maranhão
+            { name: "São Luís", state: "MA", region: "Ilha do Maranhão", active: false, population: 1115932 },
+
+            // Distrito Federal
+            { name: "Brasília", state: "DF", region: "Distrito Federal", active: false, population: 3094325 },
+
+            // Mato Grosso
+            { name: "Cuiabá", state: "MT", region: "Região Metropolitana Cuiabá", active: false, population: 695359 },
+            { name: "Várzea Grande", state: "MT", region: "Região Metropolitana Cuiabá", active: false, population: 284971 },
+
+            // Amazonas
+            { name: "Manaus", state: "AM", region: "Região Metropolitana Manaus", active: false, population: 2255903 }
+        ];
+
+        // Calcular percentual da meta atingida
+        function calculateMetaPercentage(current, target) {
+            return Math.min(100, (current / target) * 100);
+        }
+
+        // Cores baseadas no percentual da meta
+        function getColorByMeta(percentage) {
+            if (percentage >= 80) return '#22c55e'; // Verde - Meta atingida
+            if (percentage >= 60) return '#3b82f6'; // Azul - Próximo
+            if (percentage >= 40) return '#f59e0b'; // Laranja - Moderado
+            return '#ef4444'; // Vermelho - Crítico
+        }
+
+        // Cores baseadas na performance
+        function getColorByPerformance(value) {
+            if (value >= 80) return '#22c55e';
+            if (value >= 60) return '#3b82f6';
+            if (value >= 40) return '#f59e0b';
+            return '#ef4444';
+        }
+
+        let currentData = mauaData;
+        let currentView = 'meta';
+        let currentFilter = 'all';
+        let selectedCity = 'maua';
+
+        // Função para popular o seletor de cidades
+        function populateCitySelector() {
+            const citySelect = document.getElementById('citySelect');
+
+            // Limpar opções existentes
+            citySelect.innerHTML = '<option value="">Selecione uma cidade...</option>';
+
+            // Agrupar cidades por estado
+            const stateGroups = {};
+            brazilianCities.forEach(city => {
+                if (!stateGroups[city.state]) {
+                    stateGroups[city.state] = [];
+                }
+                stateGroups[city.state].push(city);
+            });
+
+            // Ordenar estados
+            const sortedStates = Object.keys(stateGroups).sort();
+
+            sortedStates.forEach(state => {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = `${state} - ${stateGroups[state][0].region}`;
+
+                // Ordenar cidades por população (decrescente)
+                stateGroups[state]
+                    .sort((a, b) => b.population - a.population)
+                    .forEach(city => {
+                        const option = document.createElement('option');
+                        option.value = city.name.toLowerCase().replace(/\s+/g, '-');
+                        option.textContent = `${city.name} (${(city.population / 1000).toFixed(0)}k hab)`;
+
+                        if (city.active) {
+                            option.classList.add('active');
+                            option.selected = true;
+                        } else {
+                            option.disabled = true;
+                            option.style.opacity = '0.5';
+                            option.textContent += ' - Em breve';
+                        }
+
+                        optgroup.appendChild(option);
+                    });
+
+                citySelect.appendChild(optgroup);
+            });
+        }
+
+        // Função para atualizar dados baseado na cidade selecionada
+        function updateDataForCity(cityName) {
+            const city = brazilianCities.find(c =>
+                c.name.toLowerCase().replace(/\s+/g, '-') === cityName
+            );
+
+            if (!city) return;
+
+            // Atualmente só Mauá tem dados completos
+            if (cityName === 'maua') {
+                currentData = mauaData;
+                document.querySelector('.content-title').textContent = 'Dashboard de Sustentabilidade - Mauá';
+                document.querySelector('.content-subtitle').textContent =
+                    'Monitoramento em tempo real dos indicadores de sustentabilidade de Mauá baseado no Global Destination Sustainability Index';
+            } else {
+                // Para outras cidades, mostrar dados simulados/placeholder
+                currentData = generatePlaceholderData(city);
+                document.querySelector('.content-title').textContent = `Dashboard de Sustentabilidade - ${city.name}`;
+                document.querySelector('.content-subtitle').textContent =
+                    `Dados em desenvolvimento para ${city.name}, ${city.state} - População: ${city.population.toLocaleString('pt-BR')} habitantes`;
+            }
+
+            updateTreemap();
+            updateMetricCards();
+        }
+
+        // Gerar dados placeholder para outras cidades
+        function generatePlaceholderData(city) {
+            const populationFactor = Math.log10(city.population) / 7; // Fator baseado na população
+            const randomFactor = Math.random() * 0.3 + 0.8; // Variação aleatória
+
+            return mauaData.map(item => ({
+                ...item,
+                current: item.current * populationFactor * randomFactor,
+                trend: ['up', 'down', 'stable'][Math.floor(Math.random() * 3)]
+            }));
+        }
+
+        // Setup treemap
+        const container = document.getElementById('treemap');
+        const margin = { top: 10, right: 10, bottom: 10, left: 10 };
+
+        function getContainerDimensions() {
+            if (!container) return { width: 0, height: 0 };
+            const rect = container.getBoundingClientRect();
+            return {
+                width: rect.width - margin.left - margin.right,
+                height: Math.max(500, rect.height - margin.top - margin.bottom)
+            };
+        }
+
+        let { width, height } = getContainerDimensions();
+
+        const svg = d3.select('#treemap')
+            .html('') // Limpa o conteúdo (ex: texto "Carregando...")
+            .append('svg')
+            .attr('width', width + margin.left + margin.right)
+            .attr('height', height + margin.top + margin.bottom);
+
+        const g = svg.append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        const tooltip = d3.select('#tooltip');
+
+        function updateTreemap() {
+            if (!container) return; // Não executa se o container não existir
+
+            // Filtrar dados
+            const filteredData = currentFilter === 'all' ?
+                currentData :
+                currentData.filter(d => d.category === currentFilter);
+
+            // Preparar dados baseado na visualização
+            let treeData = filteredData.map(d => {
+                const metaPercentage = calculateMetaPercentage(d.current, d.target);
+
+                switch(currentView) {
+                    case 'meta':
+                        return {
+                            ...d,
+                            size: Math.max(5, metaPercentage), // Tamanho baseado no % da meta
+                            displayValue: metaPercentage.toFixed(1) + '%',
+                            color: getColorByMeta(metaPercentage)
+                        };
+                    case 'gap':
+                        const gap = Math.max(0, 92.43 - metaPercentage);
+                        return {
+                            ...d,
+                            size: Math.max(5, gap + 10),
+                            displayValue: gap.toFixed(1) + '%',
+                            color: getColorByPerformance(100 - gap)
+                        };
+                    case 'performance':
+                        return {
+                            ...d,
+                            size: Math.max(5, d.current),
+                            displayValue: d.current.toFixed(1),
+                            color: getColorByPerformance(metaPercentage)
+                        };
+                    default:
+                        return {
+                            ...d,
+                            size: metaPercentage,
+                            displayValue: metaPercentage.toFixed(1) + '%',
+                            color: getColorByMeta(metaPercentage)
+                        };
+                }
+            });
+
+            // Criar hierarquia
+            const root = d3.hierarchy({ children: treeData })
+                .sum(d => d.size)
+                .sort((a, b) => b.value - a.value);
+
+            // Layout treemap
+            const treemapLayout = d3.treemap()
+                .size([width, height])
+                .padding(3)
+                .round(true);
+
+            treemapLayout(root);
+
+            // Limpar elementos existentes
+            g.selectAll('.treemap-group').remove();
+
+            // Criar grupos para cada célula
+            const cell = g.selectAll('.treemap-group')
+                .data(root.leaves())
+                .enter().append('g')
+                .attr('class', 'treemap-group')
+                .attr('transform', d => `translate(${d.x0},${d.y0})`);
+
+            // Adicionar retângulos
+            cell.append('rect')
+                .attr('class', 'treemap-rect')
+                .attr('width', d => d.x1 - d.x0)
+                .attr('height', d => d.y1 - d.y0)
+                .attr('fill', d => d.data.color)
+                .attr('rx', 4)
+                .attr('ry', 4)
+                .on('mouseover', function(event, d) {
+                    const metaPercentage = calculateMetaPercentage(d.data.current, d.data.target);
+                    const gap = Math.max(0, 92.43 - metaPercentage);
+                    const trendIcon = d.data.trend === 'up' ? '📈' : d.data.trend === 'down' ? '📉' : '➡️';
+                    const priorityIcon = d.data.priority === 'critical' ? '🚨' : d.data.priority === 'high' ? '⚠️' : '📊';
+
+                    tooltip.style('display', 'block')
+                        .style('left', (event.pageX + 15) + 'px')
+                        .style('top', (event.pageY - 10) + 'px')
+                        .html(`
+                            <div style="font-weight: 700; font-size: 14px; margin-bottom: 8px; color: #4299e1;">
+                                ${d.data.name} ${priorityIcon}
+                            </div>
+                            <div style="margin-bottom: 6px;"><strong>Categoria:</strong> ${getCategoryName(d.data.category)}</div>
+                            <div style="margin-bottom: 6px;"><strong>Valor Atual:</strong> ${d.data.current} ${d.data.unit}</div>
+                            <div style="margin-bottom: 6px;"><strong>Meta:</strong> ${d.data.target} ${d.data.unit}</div>
+                            <div style="margin-bottom: 6px;"><strong>% da Meta:</strong> ${metaPercentage.toFixed(1)}%</div>
+                            <div style="margin-bottom: 6px;"><strong>Gap vs Helsinki:</strong> ${gap.toFixed(1)}%</div>
+                            <div><strong>Tendência:</strong> ${trendIcon} ${d.data.trend}</div>
+                        `);
+                })
+                .on('mouseout', function() {
+                    tooltip.style('display', 'none');
+                });
+
+            // Adicionar texto do nome
+            cell.append('text')
+                .attr('class', 'treemap-text')
+                .attr('x', 6)
+                .attr('y', 18)
+                .attr('font-size', d => {
+                    const area = (d.x1 - d.x0) * (d.y1 - d.y0);
+                    return Math.min(14, Math.max(9, Math.sqrt(area) / 12)) + 'px';
+                })
+                .text(d => {
+                    const width = d.x1 - d.x0;
+                    const name = d.data.name;
+                    if (width < 80) return name.substring(0, 8) + '...';
+                    if (width < 120) return name.substring(0, 15) + '...';
+                    return name;
+                });
+
+            // Adicionar valor principal
+            cell.append('text')
+                .attr('class', 'treemap-value')
+                .attr('x', 6)
+                .attr('y', d => {
+                    const area = (d.x1 - d.x0) * (d.y1 - d.y0);
+                    const fontSize = Math.min(14, Math.max(9, Math.sqrt(area) / 12));
+                    return 18 + fontSize + 6;
+                })
+                .attr('font-size', d => {
+                    const area = (d.x1 - d.x0) * (d.y1 - d.y0);
+                    return Math.min(16, Math.max(10, Math.sqrt(area) / 10)) + 'px';
+                })
+                .text(d => d.data.displayValue);
+
+            // Adicionar indicador de tendência (apenas para células grandes)
+            cell.append('text')
+                .attr('class', 'treemap-text')
+                .attr('x', d => (d.x1 - d.x0) - 20)
+                .attr('y', 18)
+                .attr('font-size', '14px')
+                .attr('text-anchor', 'middle')
+                .text(d => {
+                    const area = (d.x1 - d.x0) * (d.y1 - d.y0);
+                    if (area < 3000) return '';
+                    return d.data.trend === 'up' ? '📈' : d.data.trend === 'down' ? '📉' : '➡️';
+                });
+        }
+
+        function getCategoryName(category) {
+            const names = {
+                'energy': '⚡ Energia & Emissões',
+                'social': '👥 Indicadores Sociais',
+                'environment': '🌱 Meio Ambiente',
+                'economy': '💰 Economia Verde',
+                'worldbank': '🏦 World Bank'
+            };
+            return names[category] || category;
+        }
+
+        // Event listeners para seletores de localização
+        document.getElementById('countrySelect').addEventListener('change', function() {
+            const country = this.value;
+            if (country === 'brazil') {
+                populateCitySelector();
+            }
+        });
+
+        document.getElementById('citySelect').addEventListener('change', function() {
+            const cityValue = this.value;
+            if (cityValue && cityValue !== selectedCity) {
+                selectedCity = cityValue;
+
+                // Verificar se a cidade está ativa
+                const city = brazilianCities.find(c =>
+                    c.name.toLowerCase().replace(/\s+/g, '-') === cityValue
+                );
+
+                if (city && city.active) {
+                    updateDataForCity(cityValue);
+                } else if (city) {
+                    // Mostrar mensagem para cidades em desenvolvimento
+                    alert(`${city.name} está em desenvolvimento. Em breve teremos dados completos para esta cidade!`);
+                    // Resetar para Mauá
+                    this.value = 'maua';
+                    selectedCity = 'maua';
+                }
+            }
+        });
+
+        // Event listeners para filtros de categoria
+        document.querySelectorAll('[data-filter]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+                updateTreemap();
+            });
+        });
+
+        // Event listeners para visualizações
+        document.querySelectorAll('[data-view]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentView = this.dataset.view;
+
+                // Atualizar título do treemap
+                const titles = {
+                    'meta': 'Treemap de Indicadores - Percentual da Meta Atingida',
+                    'gap': 'Treemap de Indicadores - Gap vs Helsinki (92.43%)',
+                    'performance': 'Treemap de Indicadores - Performance Atual'
+                };
+                document.querySelector('.treemap-title').textContent = titles[currentView];
+
+                updateTreemap();
+            });
+        });
+
+        // Simulação de dados em tempo real
+        setInterval(() => {
+            if (document.getElementById('dashboard-view').style.display !== 'none') {
+                currentData.forEach(item => {
+                    const variation = (Math.random() - 0.5) * 0.3;
+                    item.current = Math.max(0, Math.min(item.target * 1.2, item.current + variation));
+                    if (Math.random() < 0.02) {
+                        const trends = ['up', 'down', 'stable'];
+                        item.trend = trends[Math.floor(Math.random() * trends.length)];
+                    }
+                });
+
+                updateTreemap();
+                updateMetricCards();
+            }
+        }, 6000);
+
+        // Atualizar cards de métricas
+        function updateMetricCards() {
+            const energyAvg = currentData
+                .filter(d => d.category === 'energy')
+                .reduce((acc, d) => acc + calculateMetaPercentage(d.current, d.target), 0) /
+                currentData.filter(d => d.category === 'energy').length;
+
+            const environmentAvg = currentData
+                .filter(d => d.category === 'environment')
+                .reduce((acc, d) => acc + calculateMetaPercentage(d.current, d.target), 0) /
+                currentData.filter(d => d.category === 'environment').length;
+
+            const socialAvg = currentData
+                .filter(d => d.category === 'social')
+                .reduce((acc, d) => acc + calculateMetaPercentage(d.current, d.target), 0) /
+                currentData.filter(d => d.category === 'social').length;
+
+            const economyAvg = currentData
+                .filter(d => d.category === 'economy')
+                .reduce((acc, d) => acc + calculateMetaPercentage(d.current, d.target), 0) /
+                currentData.filter(d => d.category === 'economy').length;
+
+            const metricCards = document.querySelectorAll('.metric-card');
+            const values = [energyAvg, environmentAvg, socialAvg, economyAvg];
+
+            metricCards.forEach((card, index) => {
+                const valueEl = card.querySelector('.metric-value');
+                const progressEl = card.querySelector('.metric-progress-bar');
+
+                valueEl.textContent = values[index].toFixed(1) + '%';
+                progressEl.style.width = values[index] + '%';
+            });
+        }
+
+        // Responsividade
+        window.addEventListener('resize', () => {
+            const newDimensions = getContainerDimensions();
+            width = newDimensions.width;
+            height = newDimensions.height;
+
+            svg.attr('width', width + margin.left + margin.right)
+               .attr('height', height + margin.top + margin.bottom);
+
+            // Um pequeno delay para garantir que o layout foi recalculado
+            setTimeout(updateTreemap, 100);
+        });
+
+        // Menu mobile
+        function toggleSidebar() {
+            document.querySelector('.sidebar').classList.toggle('open');
+        }
+
+        // Adicionar botão mobile se necessário
+        if (window.innerWidth <= 768) {
+            const mobileBtn = document.createElement('button');
+            mobileBtn.innerHTML = '☰';
+            mobileBtn.style.cssText = `
+                position: fixed; top: 20px; left: 20px; background: #4299e1;
+                color: white; border: none; padding: 10px; border-radius: 4px;
+                cursor: pointer; z-index: 1001; font-size: 16px;
+            `;
+            mobileBtn.addEventListener('click', toggleSidebar);
+            document.body.appendChild(mobileBtn);
+        }
+
+        // --- INÍCIO: LÓGICA DE NAVEGAÇÃO COM IFRAME (REVISADA E CORRIGIDA) ---
+        const dashboardView = document.getElementById('dashboard-view');
+        const contentIframe = document.getElementById('content-iframe');
+        const allNavItems = document.querySelectorAll('.nav-menu .nav-item');
+        const submenuLinks = document.querySelectorAll('.submenu a');
+
+        // Função para marcar o item de navegação ativo
+        function setActiveNavItem(navItem) {
+            allNavItems.forEach(item => item.classList.remove('active'));
+            if (navItem) {
+                navItem.classList.add('active');
+            }
+        }
+
+        // Função para mostrar o conteúdo externo no iframe
+        function showIframe(url, clickedNavItem) {
+            dashboardView.style.display = 'none';
+            contentIframe.src = url;
+            contentIframe.style.display = 'block';
+            setActiveNavItem(clickedNavItem);
+        }
+
+        // Função para mostrar o dashboard principal
+        function showDashboard(clickedNavItem) {
+            contentIframe.style.display = 'none';
+            contentIframe.src = 'about:blank'; // Limpa o iframe para parar a execução
+            dashboardView.style.display = 'block';
+            setActiveNavItem(clickedNavItem);
+            // Dispara um evento de resize para que o D3.js se ajuste corretamente
+            window.dispatchEvent(new Event('resize'));
+        }
+
+        // Adiciona evento de clique a todos os links do submenu
+        submenuLinks.forEach(link => {
+            link.addEventListener('click', function(event) {
+                // Previne a navegação padrão para abrir na mesma aba ou em nova
+                event.preventDefault();
+                // Encontra o item de menu pai (.nav-item) para poder marcá-lo como ativo
+                const parentNavItem = this.closest('.nav-item');
+                showIframe(this.href, parentNavItem);
+            });
+        });
+
+        // Adiciona evento de clique aos itens de navegação principais
+        allNavItems.forEach(item => {
+            item.addEventListener('click', function(event) {
+                // Garante que o clique foi no próprio item e não em um filho (ex: link do submenu)
+                if (event.target === this) {
+                    // Pega o texto do item principal, ignorando o texto dos submenus
+                    const mainText = this.firstChild.textContent.trim();
+
+                    // Apenas o item "Dashboard" deve reexibir o dashboard principal
+                    if (mainText === 'Dashboard') {
+                        showDashboard(this);
+                    }
+                    // Clicar em outros itens principais (como "Legis") não fará nada,
+                    // permitindo que o menu dropdown funcione corretamente com hover.
+                }
+            });
+        });
+        // --- FIM: LÓGICA DE NAVEGAÇÃO COM IFRAME ---
+
+
+        // Inicializar a aplicação
+        function initializeApp() {
+            populateCitySelector();
+            updateTreemap();
+            updateMetricCards();
+
+             // Ativa o Dashboard por padrão ao carregar
+            const dashboardNavItem = Array.from(allNavItems).find(item => item.firstChild.textContent.trim() === 'Dashboard');
+            if(dashboardNavItem) {
+                showDashboard(dashboardNavItem);
+            }
+
+            // Animação inicial
+            setTimeout(() => {
+                document.querySelectorAll('.metric-card').forEach((card, index) => {
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateY(20px)';
+                    setTimeout(() => {
+                        card.style.transition = 'all 0.6s ease';
+                        card.style.opacity = '1';
+                        card.style.transform = 'translateY(0)';
+                    }, index * 100);
+                });
+            }, 500);
+
+            console.log('🚀 MEX Energia: Dashboard initialized');
+        }
+
+        initializeApp();
+
+    </script>
+</body>
+</html>
